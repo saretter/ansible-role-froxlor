@@ -1,0 +1,9 @@
+---
+# defaults file for ansible-role-froxlor
+
+http_user: www-data
+http_group: www-data
+
+froxlor_admin_user: admin
+mysql_admin_user: root
+froxlor_activate_newsfeed: 1

@@ -1,0 +1,19 @@
+galaxy_info:
+  author: Sascha Retter
+  description: Ansible role to setup froxlor.
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  license: GPL-2.0
+
+  min_ansible_version: 2.9
+
+  platforms:
+  - name: Debian
+    versions:
+      - Buster (10.x)
+
+  galaxy_tags:
+    - froxlor

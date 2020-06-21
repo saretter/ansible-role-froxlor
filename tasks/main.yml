@@ -1,0 +1,127 @@
+---
+# tasks file for ansible-role-froxlor
+- name: add froxlor key
+  apt_key:
+    id: FD88018B6F2D5390D051343FF6B4A8704F9E9BBC
+    keyserver: pool.sks-keyservers.net
+    state: present
+
+- name: Add repo
+  apt_repository:
+    repo: 'deb http://debian.froxlor.org {{ ansible_distribution_release }} main'
+    state: present
+
+- name: Install packages
+  package:
+    name: "{{ packages }}"
+    state: present
+  vars:
+    packages:
+    - apt-transport-https
+    - lsb-release 
+    - ca-certificates
+    - libnss-extrausers
+    - nscd
+    - froxlor
+
+- name: Create directories
+  file:
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    state: directory
+    mode: "{{ item.mode }}"
+  with_items:
+    - { dest: /var/lib/extrausers, owner: root, group: 0, mode: "0600" }
+    
+    
+- name: Create files
+  copy:
+    content: ""
+    dest: "{{ item.dest }}"    
+    group: "{{ item.group }}"
+    owner: "{{ item.owner }}"
+    mode: "{{ item.mode }}"
+  with_items:
+    - { dest: /var/lib/extrausers/passwd, owner: root, group: 0, mode: "0600" }
+    - { dest: /var/lib/extrausers/group, owner: root, group: 0, mode: "0600" }
+    - { dest: /var/lib/extrausers/shadow, owner: root, group: 0, mode: "0600" }
+
+- name: Configure nsswitch
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}" 
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+    backup: yes
+  with_items:
+    - { src: nsswitch.conf, dest: /etc/nsswitch.conf, owner: root, group: root, mode: "0600" }
+
+- name: Configure logrotate for customer-logs
+  copy: 
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}" 
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+    backup: yes
+  with_items:
+    - { src: froxlor, dest: /etc/logrotate.d/froxlor, owner: root, group: root, mode: "0644" }
+        
+    
+- name: Configure froxlor virtualhost
+  template: 
+    src: froxlor_vhost.conf
+    dest: "/etc/apache2/sites-enabled/{{server_fqdn}}.conf"
+    owner: root
+    group: root
+
+- name: Check if froxlor is installed
+  stat:
+    path: /var/www/froxlor/lib/userdata.inc.php
+  register: stat_results
+  ignore_errors: true
+
+- name: Allow mysql root@localhost to login
+  shell: |
+    mysql -u root -e "update mysql.user set password=password('{{ mysql_admin_password }}') where user='root' and host='localhost';"
+    mysql -u root -e "update mysql.user set plugin='mysql_native_password' where user='root' and host='localhost';"
+    mysql -u root -e "flush privileges;"
+  when: not stat_results.stat.exists
+
+- name: Install froxlor
+  uri: 
+    url: http://localhost/install/install.php?check=1
+    headers: 
+      Host: "{{ server_fqdn }}"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      mysql_host: "{{ froxlor_mysql_host }}"
+      mysql_database: "{{ froxlor_mysql_db }}"
+      mysql_unpriv_user: "{{ froxlor_mysql_user }}"
+      mysql_unpriv_pass: "{{ froxlor_mysql_password }}"
+      mysql_root_user: "{{ mysql_admin_user }}"
+      mysql_root_pass: "{{ mysql_admin_password }}"
+      admin_user: "{{ froxlor_admin_user }}"
+      admin_pass1: "{{ froxlor_admin_password }}"
+      admin_pass2: "{{ froxlor_admin_password }}"
+      activate_newsfeed: "{{ froxlor_activate_newsfeed }}"
+      servername: "{{ server_fqdn }}"
+      serverip: "{{ server_ip }}"
+      Webserver: apache24submitbutton=Click+here+to+continue
+      httpuser: "{{ http_user }}"
+      httpgroup: "{{ http_group }}"
+      check: 1
+      language: english
+      installstep: 1
+      submitbutton: Click+here+to+continue
+  
+  when: not stat_results.stat.exists
+
+- name: Initialize cronjob
+  shell: |
+    /usr/bin/php /var/www/froxlor/scripts/froxlor_master_cronjob.php --run-task 99
+    /etc/init.d/cron reload
+    
