@@ -2,8 +2,7 @@
 # tasks file for ansible-role-froxlor
 - name: add froxlor key
   apt_key:
-    id: FD88018B6F2D5390D051343FF6B4A8704F9E9BBC
-    keyserver: pool.sks-keyservers.net
+    url: "https://deb.froxlor.org/froxlor.gpg"
     state: present
 
 - name: Add repo
@@ -23,6 +22,9 @@
     - libnss-extrausers
     - nscd
     - froxlor
+    - python3-pip
+    - python3-setuptools
+    - git
 
 - name: Create directories
   file:
@@ -76,12 +78,19 @@
     dest: "/etc/apache2/sites-enabled/{{server_fqdn}}.conf"
     owner: root
     group: root
+  notify:
+  - restart apache2
 
 - name: Check if froxlor is installed
   stat:
     path: /var/www/froxlor/lib/userdata.inc.php
   register: stat_results
   ignore_errors: true
+
+- name: Restart service apache2 in all cases
+  service:
+    name: apache2
+    state: restarted
 
 - name: Allow mysql root@localhost to login
   shell: |
@@ -117,7 +126,6 @@
       language: english
       installstep: 1
       submitbutton: Click+here+to+continue
-  
   when: not stat_results.stat.exists
 
 - name: Initialize cronjob
