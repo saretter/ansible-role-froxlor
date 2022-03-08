@@ -7,8 +7,9 @@
 
 - name: Add repo
   apt_repository:
-    repo: 'deb http://debian.froxlor.org {{ ansible_distribution_release }} main'
+    repo: 'deb http://deb.froxlor.org/ubuntu {{ ansible_distribution_release }} main'
     state: present
+    update_cache: true
 
 - name: Install packages
   package:
@@ -24,7 +25,6 @@
     - froxlor
     - python3-pip
     - python3-setuptools
-    - git
 
 - name: Create directories
   file:
