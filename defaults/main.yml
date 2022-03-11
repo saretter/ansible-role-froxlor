@@ -4,6 +4,7 @@
 http_user: www-data
 http_group: www-data
 
-froxlor_admin_user: admin
+froxlor_admin_user: froxlor
 mysql_admin_user: root
 froxlor_activate_newsfeed: 1
+froxlor_mysql_host: localhost
